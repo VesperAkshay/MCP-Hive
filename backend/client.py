@@ -12,9 +12,13 @@ from mcp.client.stdio import stdio_client  # MCP client for standard I/O communi
 
 # Import Google's Gen AI SDK
 from google import genai
-from google.genai import types
-from google.genai.types import Tool, FunctionDeclaration
-from google.genai.types import GenerateContentConfig
+from google.genai import types as gemini_types
+from google.genai.types import Tool as GeminiTool
+from google.genai.types import FunctionDeclaration as GeminiFunctionDeclaration
+from google.genai.types import GenerateContentConfig as GeminiGenerateContentConfig
+
+# Import Groq LLM API
+import groq
 
 from dotenv import load_dotenv  # For loading API keys from a .env file
 
@@ -38,6 +42,7 @@ class ConversationManager:
         self.cursor = self.conn.cursor()
         self.current_conversation_id = None
         self._setup_database()
+        self._run_migrations()
     
     def _setup_database(self):
         """Create necessary database tables if they don't exist."""
@@ -73,6 +78,19 @@ class ConversationManager:
         
         self.conn.commit()
     
+    def _run_migrations(self):
+        """Run database migrations to update schema when needed."""
+        # Check if llm_provider column exists in messages table
+        self.cursor.execute("PRAGMA table_info(messages)")
+        columns = self.cursor.fetchall()
+        column_names = [column['name'] for column in columns]
+        
+        # Add llm_provider column if it doesn't exist
+        if 'llm_provider' not in column_names:
+            print("Migrating database: Adding llm_provider column to messages table")
+            self.cursor.execute("ALTER TABLE messages ADD COLUMN llm_provider TEXT")
+            self.conn.commit()
+    
     def start_new_conversation(self, title=None):
         """Create a new conversation in the database."""
         timestamp = int(time.time())
@@ -95,7 +113,8 @@ class ConversationManager:
         # Very rough estimation: ~4 characters per token for English text
         return len(text) // 4 + 1
     
-    def add_message(self, role, content, parent_id=None, tool_name=None, tool_args=None, tool_result=None):
+    def add_message(self, role, content, parent_id=None, tool_name=None, tool_args=None, 
+                   tool_result=None, llm_provider=None):
         """
         Add a message to the current conversation tree.
         
@@ -106,6 +125,7 @@ class ConversationManager:
             tool_name: Name of tool if message is a tool call
             tool_args: Tool arguments if applicable
             tool_result: Tool execution result if applicable
+            llm_provider: Which LLM provider was used (gemini, groq)
         
         Returns:
             ID of the inserted message
@@ -132,8 +152,9 @@ class ConversationManager:
         self.cursor.execute(
             """
             INSERT INTO messages 
-            (conversation_id, parent_id, role, content, token_count, timestamp, type, tool_name, tool_args, tool_result) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (conversation_id, parent_id, role, content, token_count, timestamp, type, 
+             tool_name, tool_args, tool_result, llm_provider) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 self.current_conversation_id, 
@@ -145,7 +166,8 @@ class ConversationManager:
                 msg_type, 
                 tool_name, 
                 json.dumps(tool_args) if tool_args else None, 
-                json.dumps(tool_result) if tool_result else None
+                json.dumps(tool_result) if tool_result else None,
+                llm_provider
             )
         )
         self.conn.commit()
@@ -188,7 +210,7 @@ class ConversationManager:
             include_all_paths: Whether to include all paths in the tree or just the current path
             
         Returns:
-            List of messages formatted for Gemini API
+            List of messages as raw database rows (not formatted for any specific LLM)
         """
         if not self.current_conversation_id:
             return []
@@ -240,7 +262,7 @@ class ConversationManager:
                     SELECT * FROM messages 
                     WHERE conversation_id = ? AND id NOT IN ({placeholders})
                     ORDER BY timestamp DESC
-                    LIMIT 100  -- Reasonable limit to avoid processing too many messages
+                    LIMIT 100  # Reasonable limit to avoid processing too many messages
                     """, 
                     [self.current_conversation_id] + current_path
                 )
@@ -265,20 +287,18 @@ class ConversationManager:
                 else:
                     break
         
-        # Format messages for Gemini API
-        gemini_messages = self._format_messages_for_gemini(all_messages)
-        return gemini_messages
+        return sorted(all_messages, key=lambda x: x['timestamp'])
     
-    def _format_messages_for_gemini(self, messages):
+    def format_messages_for_gemini(self, messages):
         """Convert database messages to Gemini API format."""
         gemini_messages = []
         
-        for msg in sorted(messages, key=lambda x: x['timestamp']):
+        for msg in messages:
             if msg['type'] == 'text':
                 # Regular text message
-                gemini_messages.append(types.Content(
+                gemini_messages.append(gemini_types.Content(
                     role=msg['role'],
-                    parts=[types.Part.from_text(text=msg['content'])]
+                    parts=[gemini_types.Part.from_text(text=msg['content'])]
                 ))
             elif msg['type'] == 'tool_call':
                 # Tool call message
@@ -287,9 +307,9 @@ class ConversationManager:
                     'args': json.loads(msg['tool_args']) if msg['tool_args'] else {}
                 }
                 
-                gemini_messages.append(types.Content(
+                gemini_messages.append(gemini_types.Content(
                     role=msg['role'],
-                    parts=[types.Part(function_call=function_call)]
+                    parts=[gemini_types.Part(function_call=function_call)]
                 ))
             elif msg['type'] == 'tool_result':
                 # Tool result message
@@ -298,9 +318,9 @@ class ConversationManager:
                     'response': {'result': json.loads(msg['tool_result'])} if msg['tool_result'] else {}
                 }
                 
-                gemini_messages.append(types.Content(
+                gemini_messages.append(gemini_types.Content(
                     role='tool',
-                    parts=[types.Part.from_function_response(
+                    parts=[gemini_types.Part.from_function_response(
                         name=msg['tool_name'],
                         response=json.loads(msg['tool_result']) if msg['tool_result'] else {}
                     )]
@@ -308,24 +328,263 @@ class ConversationManager:
         
         return gemini_messages
     
+    def format_messages_for_groq(self, messages):
+        """Convert database messages to Groq API format."""
+        groq_messages = []
+        
+        for msg in messages:
+            if msg['type'] == 'text':
+                # Regular text message
+                role = "assistant" if msg['role'] == "model" else msg['role']
+                groq_messages.append({
+                    "role": role,
+                    "content": msg['content']
+                })
+            elif msg['type'] == 'tool_call':
+                # Tool call message (from assistant)
+                if msg['role'] == 'model':
+                    # Structure for assistant's tool call
+                    groq_messages.append({
+                        "role": "assistant",
+                        "content": None,
+                        "tool_calls": [{
+                            "id": f"call_{msg['id']}",
+                            "type": "function",
+                            "function": {
+                                "name": msg['tool_name'],
+                                "arguments": json.dumps(json.loads(msg['tool_args']) if msg['tool_args'] else {})
+                            }
+                        }]
+                    })
+            elif msg['type'] == 'tool_result':
+                # Tool result message (from tool)
+                groq_messages.append({
+                    "role": "tool",
+                    "content": json.dumps(json.loads(msg['tool_result']) if msg['tool_result'] else {}),
+                    "tool_call_id": f"call_{msg['parent_id']}"
+                })
+        
+        return groq_messages
+    
     def close(self):
         """Close the database connection."""
         if self.conn:
             self.conn.close()
 
+class LLMProviderInterface:
+    """Base interface for different LLM providers"""
+    
+    def __init__(self):
+        self.function_declarations = None
+    
+    async def initialize(self):
+        """Initialize the LLM provider"""
+        pass
+    
+    async def process_query(self, query, conversation_history, mcp_client):
+        """Process a query using this LLM provider"""
+        raise NotImplementedError("Subclasses must implement process_query")
+    
+    def convert_tools(self, mcp_tools):
+        """Convert MCP tools to provider-specific format"""
+        raise NotImplementedError("Subclasses must implement convert_tools")
+
+class GeminiProvider(LLMProviderInterface):
+    """Gemini LLM provider implementation"""
+    
+    def __init__(self, api_key):
+        super().__init__()
+        if not api_key:
+            raise ValueError("GEMINI_API_KEY not found. Please add it to your .env file.")
+        
+        self.model_name = os.getenv("GEMINI_MODEL", "gemini-2.0-flash-001")
+        self.genai_client = genai.Client(api_key=api_key)
+    
+    def convert_tools(self, mcp_tools):
+        """Convert MCP tools to Gemini format"""
+        gemini_tools = []
+        
+        for tool in mcp_tools:
+            # Clean schema to comply with Gemini API requirements
+            parameters = clean_schema(tool.inputSchema)
+            
+            # Create function declaration for each tool
+            function_declaration = GeminiFunctionDeclaration(
+                name=tool.name,
+                description=tool.description,
+                parameters=parameters
+            )
+            
+            # Wrap in Gemini Tool object
+            gemini_tool = GeminiTool(function_declarations=[function_declaration])
+            gemini_tools.append(gemini_tool)
+        
+        self.function_declarations = gemini_tools
+        return gemini_tools
+    
+    async def process_query(self, query, conversation_history, mcp_client):
+        """Process a query using Gemini"""
+        # Format conversation for Gemini API
+        gemini_messages = mcp_client.conversation_manager.format_messages_for_gemini(conversation_history)
+        
+        # Send initial request to Gemini with available tools
+        response = self.genai_client.models.generate_content(
+            model=self.model_name,
+            contents=gemini_messages,
+            config=GeminiGenerateContentConfig(
+                tools=self.function_declarations,
+            ),
+        )
+        
+        # Prepare collection for final response text
+        final_text = []
+        has_function_call = False
+        function_call_part = None
+        tool_name = None
+        tool_args = None
+        
+        # Process Gemini's response, handling any tool execution requests
+        for candidate in response.candidates:
+            if not candidate.content or not candidate.content.parts:
+                continue
+                
+            for part in candidate.content.parts:
+                if not isinstance(part, gemini_types.Part):
+                    continue
+                    
+                if part.function_call:
+                    # We found a function call
+                    has_function_call = True
+                    function_call_part = part
+                    tool_name = function_call_part.function_call.name
+                    tool_args = function_call_part.function_call.args
+                    break
+                elif part.text and part.text.strip():
+                    final_text.append(part.text)
+        
+        return {
+            "has_function_call": has_function_call,
+            "function_call_part": function_call_part,
+            "tool_name": tool_name,
+            "tool_args": tool_args,
+            "final_text": final_text,
+            "provider": "gemini"
+        }
+
+class GroqProvider(LLMProviderInterface):
+    """Groq LLM provider implementation"""
+    
+    def __init__(self, api_key):
+        super().__init__()
+        if not api_key:
+            raise ValueError("GROQ_API_KEY not found. Please add it to your .env file.")
+        
+        self.model_name = os.getenv("GROQ_MODEL", "llama-3-70b-8192")
+        self.groq_client = groq.Client(api_key=api_key)
+    
+    def convert_tools(self, mcp_tools):
+        """Convert MCP tools to Groq format"""
+        groq_tools = []
+        
+        for tool in mcp_tools:
+            # Clean schema to comply with Groq API requirements
+            parameters = clean_schema(tool.inputSchema)
+            
+            # Create function declaration for each tool
+            groq_tool = {
+                "type": "function",
+                "function": {
+                    "name": tool.name,
+                    "description": tool.description,
+                    "parameters": parameters
+                }
+            }
+            
+            groq_tools.append(groq_tool)
+        
+        self.function_declarations = groq_tools
+        return groq_tools
+    
+    async def process_query(self, query, conversation_history, mcp_client):
+        """Process a query using Groq"""
+        # Format conversation for Groq API
+        groq_messages = mcp_client.conversation_manager.format_messages_for_groq(conversation_history)
+        
+        # System message to guide Groq's behavior
+        system_message = {
+            "role": "system", 
+            "content": "You are a helpful assistant that can use tools when needed. "
+                      "Always use tools when available and appropriate for the task."
+        }
+        
+        # Add system message at the beginning
+        complete_messages = [system_message] + groq_messages
+        
+        # Send request to Groq with available tools
+        response = self.groq_client.chat.completions.create(
+            model=self.model_name,
+            messages=complete_messages,
+            tools=self.function_declarations,
+            tool_choice="auto"
+        )
+        
+        # Prepare collection for final response text
+        final_text = []
+        has_function_call = False
+        function_call_part = None
+        tool_name = None
+        tool_args = None
+        
+        # Extract response
+        if response.choices and response.choices[0].message:
+            message = response.choices[0].message
+            
+            # Check for tool calls
+            if hasattr(message, 'tool_calls') and message.tool_calls and len(message.tool_calls) > 0:
+                has_function_call = True
+                tool_call = message.tool_calls[0]
+                tool_name = tool_call.function.name
+                tool_args = json.loads(tool_call.function.arguments)
+                function_call_part = tool_call  # Store the whole tool call
+            elif message.content:
+                final_text.append(message.content)
+        
+        return {
+            "has_function_call": has_function_call,
+            "function_call_part": function_call_part,
+            "tool_name": tool_name,
+            "tool_args": tool_args,
+            "final_text": final_text,
+            "provider": "groq"
+        }
+
 class MCPClient:
     def __init__(self):
-        """Initialize the MCP client with Gemini API configuration."""
+        """Initialize the MCP client with LLM providers and conversation manager."""
         # Initialize session and resource management
         self.session: Optional[ClientSession] = None
         self.exit_stack = AsyncExitStack()
         
-        # Configure Gemini API with key from environment variables
+        # Initialize LLM providers
         gemini_api_key = os.getenv("GEMINI_API_KEY")
-        if not gemini_api_key:
-            raise ValueError("GEMINI_API_KEY not found. Please add it to your .env file.")
+        groq_api_key = os.getenv("GROQ_API_KEY")
         
-        self.genai_client = genai.Client(api_key=gemini_api_key)
+        self.providers = {}
+        if gemini_api_key:
+            self.providers["gemini"] = GeminiProvider(gemini_api_key)
+        if groq_api_key:
+            self.providers["groq"] = GroqProvider(groq_api_key)
+            
+        if not self.providers:
+            raise ValueError("No LLM providers configured. Please add GEMINI_API_KEY or GROQ_API_KEY to your .env file.")
+        
+        # Set default provider
+        default_provider = os.getenv("DEFAULT_LLM_PROVIDER", "gemini")
+        if default_provider not in self.providers:
+            default_provider = next(iter(self.providers.keys()))
+        
+        self.current_provider_name = default_provider
+        self.current_provider = self.providers[default_provider]
         
         # Initialize conversation manager with SQLite backend
         db_path = os.getenv("CONVERSATION_DB_PATH", ":memory:")
@@ -337,7 +596,7 @@ class MCPClient:
         self.latest_message_id = None
 
     async def connect_to_server(self, server_script_path: str):
-        """Establish connection to the MCP server and prepare tools for Gemini."""
+        """Establish connection to the MCP server and prepare tools for LLMs."""
         # Determine appropriate runtime environment (Python or Node.js)
         command = "python" if server_script_path.endswith('.py') else "node"
         
@@ -357,144 +616,126 @@ class MCPClient:
         
         print("\nConnected to server with tools:", [tool.name for tool in tools])
         
-        # Convert MCP tools format to be compatible with Gemini API
-        self.function_declarations = convert_mcp_tools_to_gemini(tools)
+        # Convert MCP tools for each provider
+        for provider_name, provider in self.providers.items():
+            provider.convert_tools(tools)
+        
+        print(f"Using {self.current_provider_name} as the default LLM provider")
+
+    async def set_provider(self, provider_name):
+        """Change the active LLM provider."""
+        if provider_name not in self.providers:
+            available = ", ".join(self.providers.keys())
+            return f"Provider '{provider_name}' not available. Use one of: {available}"
+        
+        self.current_provider_name = provider_name
+        self.current_provider = self.providers[provider_name]
+        return f"Switched to {provider_name} provider"
 
     async def process_query(self, query: str) -> str:
         """
-        Process user queries through Gemini API with tool-calling capabilities.
+        Process user queries through the current LLM provider with tool-calling capabilities.
         
         Args:
             query: The user's text input question or instruction
             
         Returns:
-            Gemini's response, potentially after executing requested tools
+            LLM's response, potentially after executing requested tools
         """
+        # Handle provider switching command
+        if query.lower().startswith("use provider "):
+            provider = query[13:].strip()
+            return await self.set_provider(provider)
+        
         # Add user query to conversation history
         user_msg_id = self.conversation_manager.add_message(
             role='user',
-            content=query
+            content=query,
+            llm_provider=self.current_provider_name
         )
         self.latest_message_id = user_msg_id
         
-        # Get conversation context from database with token awareness
+        # Get conversation context from database
         conversation_history = self.conversation_manager.get_conversation_for_context(
             latest_message_id=user_msg_id,
-            include_all_paths=False  # Only include the current path for focused reasoning
+            include_all_paths=False
         )
         
-        # Send initial request to Gemini with available tools
-        response = self.genai_client.models.generate_content(
-            model='gemini-2.0-flash-001',
-            contents=conversation_history,
-            config=types.GenerateContentConfig(
-                tools=self.function_declarations,
-            ),
-        )
-        
-        # Prepare collection for final response text
+        # Process with current LLM provider
         final_text = []
         
-        # Continue processing tool calls until Gemini provides a final answer
+        # Continue processing tool calls until LLM provides a final answer
         while True:
-            has_function_call = False
+            # Get response from current LLM provider
+            llm_response = await self.current_provider.process_query(
+                query, 
+                conversation_history, 
+                self
+            )
             
-            # Process Gemini's response, handling any tool execution requests
-            for candidate in response.candidates:
-                if not candidate.content or not candidate.content.parts:
-                    continue
-                    
-                for part in candidate.content.parts:
-                    if not isinstance(part, types.Part):
-                        continue
-                        
-                    if part.function_call:
-                        # We found a function call, set flag to true
-                        has_function_call = True
-                        
-                        # Extract tool call details from Gemini's response
-                        function_call_part = part
-                        tool_name = function_call_part.function_call.name
-                        tool_args = function_call_part.function_call.args
-                        
-                        print(f"\n[Gemini requested tool call: {tool_name} with args {tool_args}]")
-                        
-                        # Add model's tool call to conversation history
-                        model_msg_id = self.conversation_manager.add_message(
-                            role='model',
-                            parent_id=self.latest_message_id,
-                            tool_name=tool_name,
-                            tool_args=tool_args,
-                            content=None
-                        )
-                        self.latest_message_id = model_msg_id
-                        
-                        # Execute the requested tool via MCP server
-                        try:
-                            result = await self.session.call_tool(tool_name, tool_args)
-                            function_response = {"result": result.content}
-                        except Exception as e:
-                            function_response = {"error": str(e)}
-                            print(f"Error executing tool: {str(e)}")
-                        
-                        # Add tool response to conversation history
-                        tool_msg_id = self.conversation_manager.add_message(
-                            role='tool',
-                            parent_id=model_msg_id,
-                            tool_name=tool_name,
-                            tool_result=self._ensure_json_serializable(function_response),
-                            content=None
-                        )
-                        self.latest_message_id = tool_msg_id
-                        
-                        # Get updated conversation history
-                        conversation_history = self.conversation_manager.get_conversation_for_context(
-                            latest_message_id=tool_msg_id,
-                            include_all_paths=False
-                        )
-                        
-                        # Send updated conversation with tool results back to Gemini
-                        response = self.genai_client.models.generate_content(
-                            model='gemini-2.0-flash-001',
-                            contents=conversation_history,
-                            config=types.GenerateContentConfig(
-                                tools=self.function_declarations,
-                            ),
-                        )
-                        
-                        # We've processed one function call, break the inner loop
-                        # to re-evaluate the new response for more function calls
-                        break
-                        
-                    else:
-                        # No function call, just text response
-                        if part.text and part.text.strip():
-                            final_text.append(part.text)
-                
-                # Break out of candidate loop if we found and processed a function call
-                if has_function_call:
-                    break
+            has_function_call = llm_response["has_function_call"]
+            function_call_part = llm_response["function_call_part"]
+            tool_name = llm_response["tool_name"]
+            tool_args = llm_response["tool_args"]
+            provider = llm_response["provider"]
             
-            # If no function calls were found in this response, we're done
-            if not has_function_call:
-                # One last check for text responses in the final message
-                for candidate in response.candidates:
-                    if candidate.content and candidate.content.parts:
-                        for part in candidate.content.parts:
-                            if isinstance(part, types.Part) and part.text and part.text.strip():
-                                final_text.append(part.text)
+            # Collect any text responses
+            if llm_response["final_text"]:
+                final_text.extend(llm_response["final_text"])
+            
+            # Process function calls if present
+            if has_function_call:
+                print(f"\n[{provider.upper()} requested tool call: {tool_name} with args {tool_args}]")
                 
-                # Add final model response to conversation history
-                final_response = "\n".join([text for text in final_text if text is not None and text.strip()])
-                if final_response:
-                    final_msg_id = self.conversation_manager.add_message(
-                        role='model',
-                        parent_id=self.latest_message_id,
-                        content=final_response
-                    )
-                    self.latest_message_id = final_msg_id
+                # Add model's tool call to conversation history
+                model_msg_id = self.conversation_manager.add_message(
+                    role='model',
+                    parent_id=self.latest_message_id,
+                    tool_name=tool_name,
+                    tool_args=tool_args,
+                    content=None,
+                    llm_provider=provider
+                )
+                self.latest_message_id = model_msg_id
                 
+                # Execute the requested tool via MCP server
+                try:
+                    result = await self.session.call_tool(tool_name, tool_args)
+                    function_response = {"result": result.content}
+                except Exception as e:
+                    function_response = {"error": str(e)}
+                    print(f"Error executing tool: {str(e)}")
+                
+                # Add tool response to conversation history
+                tool_msg_id = self.conversation_manager.add_message(
+                    role='tool',
+                    parent_id=model_msg_id,
+                    tool_name=tool_name,
+                    tool_result=self._ensure_json_serializable(function_response),
+                    content=None,
+                    llm_provider=provider
+                )
+                self.latest_message_id = tool_msg_id
+                
+                # Get updated conversation history
+                conversation_history = self.conversation_manager.get_conversation_for_context(
+                    latest_message_id=tool_msg_id,
+                    include_all_paths=False
+                )
+            else:
+                # No more function calls, exit the loop
                 break
+        
+        # Add final model response to conversation history
+        final_response = "\n".join([text for text in final_text if text is not None and text.strip()])
+        if final_response:
+            final_msg_id = self.conversation_manager.add_message(
+                role='model',
+                parent_id=self.latest_message_id,
+                content=final_response,
+                llm_provider=provider
+            )
+            self.latest_message_id = final_msg_id
         
         # Filter out None values and empty strings
         filtered_text = [text for text in final_text if text is not None and text.strip()]
@@ -507,8 +748,11 @@ class MCPClient:
         return "\n".join(filtered_text)
 
     async def chat_loop(self):
-        """Run interactive chat session between user and Gemini with tool capabilities."""
-        print("\nMCP Client Started! Type 'quit' to exit.")
+        """Run interactive chat session between user and LLM with tool capabilities."""
+        provider_list = ", ".join(self.providers.keys())
+        print(f"\nMCP Client Started! Available providers: {provider_list}")
+        print(f"Current provider: {self.current_provider_name}")
+        print(f"Type 'use provider <name>' to switch providers. Type 'quit' to exit.")
         
         while True:
             query = input("\nQuery: ").strip()
@@ -554,13 +798,13 @@ class MCPClient:
 
 def clean_schema(schema):
     """
-    Remove title fields from JSON schemas to ensure compatibility with Gemini API.
+    Remove title fields from JSON schemas to ensure compatibility with LLM APIs.
     
     Args:
         schema: JSON schema dictionary
         
     Returns:
-        Cleaned schema dictionary suitable for Gemini
+        Cleaned schema dictionary suitable for LLM APIs
     """
     if isinstance(schema, dict):
         schema.pop("title", None)
@@ -571,35 +815,6 @@ def clean_schema(schema):
                 schema["properties"][key] = clean_schema(schema["properties"][key])
     
     return schema
-
-def convert_mcp_tools_to_gemini(mcp_tools):
-    """
-    Convert MCP tool definitions to Gemini-compatible format.
-    
-    Args:
-        mcp_tools: List of tool objects from MCP server
-        
-    Returns:
-        List of tools formatted for Gemini API function calling
-    """
-    gemini_tools = []
-    
-    for tool in mcp_tools:
-        # Clean schema to comply with Gemini API requirements
-        parameters = clean_schema(tool.inputSchema)
-        
-        # Create function declaration for each tool
-        function_declaration = FunctionDeclaration(
-            name=tool.name,
-            description=tool.description,
-            parameters=parameters
-        )
-        
-        # Wrap in Gemini Tool object
-        gemini_tool = Tool(function_declarations=[function_declaration])
-        gemini_tools.append(gemini_tool)
-    
-    return gemini_tools
 
 async def main():
     """

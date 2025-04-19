@@ -83,3 +83,72 @@ The SQLite database contains:
 
 ## License
 (Your chosen license)
+
+# MCP Client with Multi-LLM Support
+
+A flexible Multi-modal Capability Protocol (MCP) client that connects natural language processing with executable tools.
+
+## Features
+
+- **Multiple LLM Providers**: Support for both Google's Gemini and Groq's LLMs
+- **Persistent Conversation History**: SQLite database with token-aware management
+- **Tree-Based Conversation Structure**: Maintains conversation branches and context
+- **Tool Execution**: Seamless execution of server-side tools through natural language
+- **Token-Aware Context Management**: Intelligently manages context windows
+
+## Setup
+
+1. Install dependencies:
+   ```
+   pip install -r requirements.txt
+   ```
+
+2. Configure your environment variables in `.env`:
+   ```
+   GEMINI_API_KEY=your_gemini_api_key
+   GROQ_API_KEY=your_groq_api_key
+   CONVERSATION_DB_PATH=./conversations.db
+   MAX_CONTEXT_TOKENS=8000
+   DEFAULT_LLM_PROVIDER=gemini  # or "groq"
+   ```
+
+3. Run the client:
+   ```
+   python client.py path/to/server_script.py
+   ```
+
+## Supported LLM Providers
+
+### Gemini
+- Default model: `gemini-2.0-flash-001`
+- Function calling support
+- Fast response times
+
+### Groq
+- Default model: `llama-3-70b-8192`
+- Function calling support
+- Extremely low latency
+
+## Usage
+
+The client accepts natural language queries and determines whether to execute tools or provide direct responses:
+
+```
+MCP Client Started! Type 'quit' to exit.
+
+Query: Calculate 25 + 17
+42
+
+Query: What's the weather in New York?
+[Tool execution for weather data...]
+The current temperature in New York is 72°F with partly cloudy skies.
+```
+
+## Architecture
+
+Built with a modular design that separates:
+- LLM provider interfaces
+- Conversation storage and management
+- Tool execution pipelines
+
+See `notes/Chapter1-MCP-Client.md` for detailed architecture documentation.
