@@ -1,11 +1,12 @@
 # MCP-Hive Backend
 
 ## Overview
-This repository contains the Python backend services for the MCP-Hive project. It's designed to function as an API service that enables integration with LLM models (specifically Google's Gemini) using the Model Control Protocol (MCP).
+This repository contains the Python backend services for the MCP-Hive project. It's designed to function as an API service that enables integration with LLM models (specifically Google's Gemini and Groq) using the Model Control Protocol (MCP).
 
 ## Features
 - MCP (Model Control Protocol) client implementation
-- Integration with Google's Gemini AI models
+- Multiple transport mechanisms (StdIO and SSE)
+- Integration with Google's Gemini AI and Groq LLM models
 - SQLite-based conversation management and persistence
 - Asynchronous processing with asyncio
 - Tool/function calling capabilities
@@ -14,7 +15,9 @@ This repository contains the Python backend services for the MCP-Hive project. I
 ## Tech Stack
 - Python 3.12+
 - Google Generative AI SDK
+- Groq API for additional LLM options
 - MCP (Model Control Protocol)
+- Server-Sent Events (SSE) for web transport
 - SQLite for conversation storage
 - dotenv for environment management
 - LangChain for AI framework components
@@ -45,13 +48,27 @@ This repository contains the Python backend services for the MCP-Hive project. I
 
 4. Set up environment variables:
    - Create a `.env` file based on `.env.example`
-   - Add your Google API key: `GOOGLE_API_KEY=your_api_key_here`
+   - Add your API keys: 
+     ```
+     GEMINI_API_KEY=your_gemini_api_key_here
+     GROQ_API_KEY=your_groq_api_key_here
+     CONVERSATION_DB_PATH=./conversations.db
+     MAX_CONTEXT_TOKENS=8000
+     DEFAULT_LLM_PROVIDER=gemini
+     ```
 
 ### Running the Service
 
-Run the main client:
+#### Standard MCP Client (StdIO-based transport)
+Run the main client with a local MCP server:
 ```
-python client.py
+python client.py path/to/server_script.py
+```
+
+#### SSE-based MCP Client (Web transport)
+Run the SSE client with a web-based MCP server:
+```
+python client_sse.py http://localhost:8081/sse
 ```
 
 For testing with a simple MCP server:
@@ -59,12 +76,33 @@ For testing with a simple MCP server:
 python test_server.py
 ```
 
+For testing with an SSE-based MCP server:
+```
+python test_server_sse.py
+```
+
 ## Project Structure
 - `client.py` - Main MCP client implementation with conversation management
+- `client_sse.py` - SSE-based MCP client for web transport
 - `test_server.py` - Simple MCP server for testing
-- `main.py` - Basic entry point
+- `test_server_sse.py` - SSE-based MCP server for testing
 - `conversations.db` - SQLite database for storing conversations
 - `.env` - Environment configuration
+
+## MCP Client Types
+
+### StdIO-based Client
+The standard MCP client uses StdIO for communication with local MCP servers. This is ideal for:
+- Local deployment scenarios
+- Direct integration with Python-based servers
+- Command-line applications
+
+### SSE-based Client
+The SSE client uses Server-Sent Events for communication, enabling:
+- Web-based integration
+- Connection to remote MCP servers
+- Browser compatibility
+- Real-time streaming responses
 
 ## MCP Integration
 The backend uses the Model Control Protocol (MCP) to interact with AI services, enabling:
@@ -72,6 +110,11 @@ The backend uses the Model Control Protocol (MCP) to interact with AI services, 
 - Conversation management
 - Context awareness
 - Tool integration
+
+## Multi-LLM Support
+The clients support multiple LLM providers:
+- **Google Gemini**: High-quality responses with function calling capabilities
+- **Groq LLM**: Fast, low-latency responses with competitive quality
 
 ## Database Schema
 The SQLite database contains:
@@ -95,6 +138,7 @@ A flexible Multi-modal Capability Protocol (MCP) client that connects natural la
 - **Tree-Based Conversation Structure**: Maintains conversation branches and context
 - **Tool Execution**: Seamless execution of server-side tools through natural language
 - **Token-Aware Context Management**: Intelligently manages context windows
+- **Multiple Transport Options**: StdIO and SSE-based communication
 
 ## Setup
 
@@ -112,9 +156,14 @@ A flexible Multi-modal Capability Protocol (MCP) client that connects natural la
    DEFAULT_LLM_PROVIDER=gemini  # or "groq"
    ```
 
-3. Run the client:
+3. Run the standard client:
    ```
    python client.py path/to/server_script.py
+   ```
+
+4. Or run the SSE-based client:
+   ```
+   python client_sse.py http://localhost:8081/sse
    ```
 
 ## Supported LLM Providers
@@ -150,5 +199,6 @@ Built with a modular design that separates:
 - LLM provider interfaces
 - Conversation storage and management
 - Tool execution pipelines
+- Transport mechanisms (StdIO, SSE)
 
-See `notes/Chapter1-MCP-Client.md` for detailed architecture documentation.
+See `notes/Chapter1-MCP-Client.md` and `notes/Chapter2-MCP-Client-SSE.md` for detailed architecture documentation.

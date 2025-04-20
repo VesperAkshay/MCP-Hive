@@ -5,7 +5,8 @@ MCP-Hive is a comprehensive project that combines a modern frontend interface wi
 
 ## Project Structure
 - **Frontend**: Main application interface (to be implemented)
-- **Backend**: Python-based MCP service integrated as a Git submodule that provides AI model integration through Google's Generative AI
+- **Backend**: Python-based MCP service integrated as a Git submodule that provides AI model integration through multiple LLM providers
+- **Notes**: Architecture documentation and design notes
 
 ## Backend as a Git Submodule
 The backend is maintained as a Git submodule, which provides several benefits:
@@ -37,6 +38,8 @@ git submodule status
 
 ## Features
 - Integration with Large Language Models (LLMs) using Model Control Protocol (MCP)
+- Support for multiple LLM providers (Google Gemini and Groq)
+- Multiple transport options (StdIO and SSE)
 - Conversation persistence using SQLite
 - Efficient function/tool calling capabilities
 - Environment-based configuration
@@ -48,7 +51,9 @@ git submodule status
 ### Backend (Implemented)
 - Python 3.12+
 - Google Generative AI SDK
+- Groq LLM API
 - MCP (Model Control Protocol)
+- Server-Sent Events (SSE)
 - SQLite for storage
 - LangChain components
 
@@ -81,18 +86,28 @@ git submodule status
 
 4. Configure environment variables:
    - Create a `.env` file in the backend directory based on `.env.example`
-   - Add your Google API key: `GOOGLE_API_KEY=your_api_key_here`
+   - Add your API keys:
+     ```
+     GEMINI_API_KEY=your_gemini_api_key
+     GROQ_API_KEY=your_groq_api_key
+     CONVERSATION_DB_PATH=./conversations.db
+     MAX_CONTEXT_TOKENS=8000
+     DEFAULT_LLM_PROVIDER=gemini
+     ```
 
 ### Running the Application
-- **Backend Service**:
+- **StdIO-based Client**:
   ```
   cd backend
-  python client.py
+  python client.py test_server.py
   ```
-- **Test Server**:
+- **SSE-based Client**:
   ```
   cd backend
-  python test_server.py
+  # First start the SSE server
+  python test_server_sse.py
+  # In another terminal
+  python client_sse.py http://localhost:8081/sse
   ```
 
 ## Development
@@ -105,6 +120,10 @@ git submodule update --remote backend
 
 ### Backend Development
 For more details about the backend implementation, please refer to the [Backend README](backend/README.md).
+
+### Architecture Documentation
+- [Chapter 1: MCP Client](notes/Chapter1-MCP-Client.md) - Core architecture of the MCP client
+- [Chapter 2: MCP Client with SSE](notes/Chapter2-MCP-Client-SSE.md) - SSE transport implementation
 
 ## License
 [Your chosen license] 
