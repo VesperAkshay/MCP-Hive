@@ -43,6 +43,7 @@ git submodule status
 - Conversation persistence using SQLite
 - Efficient function/tool calling capabilities
 - Environment-based configuration
+- LangChain integration with React agent pattern
 
 ## Tech Stack
 ### Frontend (Planned)
@@ -55,7 +56,7 @@ git submodule status
 - MCP (Model Control Protocol)
 - Server-Sent Events (SSE)
 - SQLite for storage
-- LangChain components
+- LangChain and LangGraph for agent patterns
 
 ## Getting Started
 
@@ -109,6 +110,11 @@ git submodule status
   # In another terminal
   python client_sse.py http://localhost:8081/sse
   ```
+- **LangChain React Agent Client**:
+  ```
+  cd backend
+  python mcp_client_config.py path/to the config file/Mcphive_config.json
+  ```
 
 ## Development
 
@@ -124,6 +130,7 @@ For more details about the backend implementation, please refer to the [Backend 
 ### Architecture Documentation
 - [Chapter 1: MCP Client](notes/Chapter1-MCP-Client.md) - Core architecture of the MCP client
 - [Chapter 2: MCP Client with SSE](notes/Chapter2-MCP-Client-SSE.md) - SSE transport implementation
+- [Chapter 3: LangChain React Agent](notes/Chapter3-LangChain-React-Agent.md) - LangChain integration with React agent pattern
 
 ## License
 [Your chosen license] 
