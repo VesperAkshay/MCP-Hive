@@ -625,14 +625,14 @@ class MCPClient:
         # Open an SSE connection to the server
         self._streams_context = sse_client(url=server_url)
         streams = await self._streams_context.__aenter__()
-        
+
         # Create an MCP session using the SSE connection
         self._session_context = ClientSession(*streams)
         self.session = await self._session_context.__aenter__()
-        
+
         # Initialize the MCP session
         await self.session.initialize()
-        
+
         # Retrieve available tools and list them
         print("Initialized SSE client...")
         print("Listing tools...")
@@ -640,7 +640,7 @@ class MCPClient:
         tools = response.tools
         
         print("\nConnected to server with tools:", [tool.name for tool in tools])
-        
+
         # Convert MCP tools for each provider
         for provider_name, provider in self.providers.items():
             provider.convert_tools(tools)
@@ -663,7 +663,7 @@ class MCPClient:
         
         Args:
             query: The user's text input question or instruction
-            
+        
         Returns:
             LLM's response, potentially after executing requested tools
         """
@@ -688,7 +688,7 @@ class MCPClient:
         
         # Process with current LLM provider
         final_text = []
-        
+
         # Continue processing tool calls until LLM provides a final answer
         while True:
             # Get response from current LLM provider
@@ -724,11 +724,11 @@ class MCPClient:
                 self.latest_message_id = model_msg_id
                 
                 # Execute the requested tool via MCP server
-                try:
-                    result = await self.session.call_tool(tool_name, tool_args)
-                    function_response = {"result": result.content}
-                except Exception as e:
-                    function_response = {"error": str(e)}
+                        try:
+                            result = await self.session.call_tool(tool_name, tool_args)
+                            function_response = {"result": result.content}
+                        except Exception as e:
+                            function_response = {"error": str(e)}
                     print(f"Error executing tool: {str(e)}")
                 
                 # Add tool response to conversation history
@@ -778,12 +778,12 @@ class MCPClient:
         print(f"\nMCP Client Started! Available providers: {provider_list}")
         print(f"Current provider: {self.current_provider_name}")
         print(f"Type 'use provider <name>' to switch providers. Type 'quit' to exit.")
-        
+
         while True:
             query = input("\nQuery: ").strip()
             if query.lower() == 'quit':
                 break
-                
+
             response = await self.process_query(query)
             print("\n" + response)
 
@@ -833,7 +833,7 @@ def clean_schema(schema):
     
     Args:
         schema: JSON schema dictionary
-        
+    
     Returns:
         Cleaned schema dictionary suitable for LLM APIs
     """
@@ -856,7 +856,7 @@ async def main():
         print("Usage: python client_sse.py <server_url>")
         print("Example: python client_sse.py http://localhost:8000/mcp-sse")
         sys.exit(1)
-    
+
     server_url = sys.argv[1]
     client = MCPClient()
     

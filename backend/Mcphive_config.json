@@ -1,0 +1,21 @@
+{
+    "mcpServers": {
+      "filesystem": {
+        "command": "npx",
+        "args": [
+          "-y",
+          "@modelcontextprotocol/server-filesystem",
+          "D:\\MCP-Hive",
+          "D:\\MCP-Hive\\backend"
+        ]
+      },
+      "weather_server": {
+        "command": "python",
+        "args": ["D:/MCP-Hive/backend/test_server.py"]
+      },
+      "git": {
+    "command": "uvx",
+        "args": ["mcp-server-git", "--repository", "D:/MCP-Hive"]
+      }
+    }
+  }
