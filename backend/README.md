@@ -11,6 +11,7 @@ This repository contains the Python backend services for the MCP-Hive project. I
 - Asynchronous processing with asyncio
 - Tool/function calling capabilities
 - Environment configuration management
+- LangChain React agent implementation
 
 ## Tech Stack
 - Python 3.12+
@@ -20,7 +21,7 @@ This repository contains the Python backend services for the MCP-Hive project. I
 - Server-Sent Events (SSE) for web transport
 - SQLite for conversation storage
 - dotenv for environment management
-- LangChain for AI framework components
+- LangChain and LangGraph for AI agent frameworks
 
 ## Getting Started
 
@@ -50,8 +51,8 @@ This repository contains the Python backend services for the MCP-Hive project. I
    - Create a `.env` file based on `.env.example`
    - Add your API keys: 
      ```
-     GEMINI_API_KEY=your_gemini_api_key_here
-     GROQ_API_KEY=your_groq_api_key_here
+     GEMINI_API_KEY=your_gemini_api_key
+     GROQ_API_KEY=your_groq_api_key
      CONVERSATION_DB_PATH=./conversations.db
      MAX_CONTEXT_TOKENS=8000
      DEFAULT_LLM_PROVIDER=gemini
@@ -71,6 +72,12 @@ Run the SSE client with a web-based MCP server:
 python client_sse.py http://localhost:8081/sse
 ```
 
+#### LangChain React Agent Client
+Run the LangChain React agent client with a configuration file:
+```
+python mcp_client_config.py
+```
+
 For testing with a simple MCP server:
 ```
 python test_server.py
@@ -84,6 +91,7 @@ python test_server_sse.py
 ## Project Structure
 - `client.py` - Main MCP client implementation with conversation management
 - `client_sse.py` - SSE-based MCP client for web transport
+- `mcp_client_config.py` - LangChain React agent with MCP tools integration
 - `test_server.py` - Simple MCP server for testing
 - `test_server_sse.py` - SSE-based MCP server for testing
 - `conversations.db` - SQLite database for storing conversations
@@ -103,6 +111,13 @@ The SSE client uses Server-Sent Events for communication, enabling:
 - Connection to remote MCP servers
 - Browser compatibility
 - Real-time streaming responses
+
+### LangChain React Agent Client
+The LangChain client implements the React agent pattern for more sophisticated reasoning:
+- Configuration-based MCP server connections
+- ReAct pattern for reasoning and acting
+- Structured agent-based decision making
+- JSON configuration for multiple server setup
 
 ## MCP Integration
 The backend uses the Model Control Protocol (MCP) to interact with AI services, enabling:
