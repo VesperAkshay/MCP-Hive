@@ -724,11 +724,11 @@ class MCPClient:
                 self.latest_message_id = model_msg_id
                 
                 # Execute the requested tool via MCP server
-                        try:
-                            result = await self.session.call_tool(tool_name, tool_args)
-                            function_response = {"result": result.content}
-                        except Exception as e:
-                            function_response = {"error": str(e)}
+                try:
+                    result = await self.session.call_tool(tool_name, tool_args)
+                    function_response = {"result": result.content}
+                except Exception as e:
+                    function_response = {"error": str(e)}
                     print(f"Error executing tool: {str(e)}")
                 
                 # Add tool response to conversation history
