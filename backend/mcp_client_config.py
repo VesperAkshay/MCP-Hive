@@ -3,7 +3,7 @@
 langchain_mcp_client_wconfig.py
 
 This file implements a LangChain MCP client that:
-  - Loads configuration from a JSON file specified by the THEAILANGUAGE_CONFIG environment variable.
+  - Loads configuration from a JSON file specified by the MCPHIVE_CONFIG environment variable.
   - Connects to one or more MCP servers defined in the config.
   - Loads available MCP tools from each connected server.
   - Uses the Google Gemini API (via LangChain) to create a React agent with access to all tools.
@@ -12,7 +12,7 @@ This file implements a LangChain MCP client that:
 Detailed explanations:
   - Retries (max_retries=2): If an API call fails due to transient issues (e.g., timeouts), it will retry up to 2 times.
   - Temperature (set to 0): A value of 0 means fully deterministic output; increase this for more creative responses.
-  - Environment Variable: THEAILANGUAGE_CONFIG should point to a config JSON that defines all MCP servers.
+  - Environment Variable: MCPHIVE_CONFIG should point to a config JSON that defines all MCP servers.
 """
 
 import asyncio                        # For asynchronous operations
