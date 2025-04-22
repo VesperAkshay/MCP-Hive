@@ -5,6 +5,7 @@ description = "MCP-Hive"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "fastapi>=0.115.12",
     "google-genai>=1.5.0",
     "google-generativeai>=0.8.4",
     "groq>=0.22.0",
@@ -16,6 +17,8 @@ dependencies = [
     "nest-asyncio>=1.6.0",
     "pillow>=11.1.0",
     "python-dotenv>=1.0.1",
+    "requests>=2.32.3",
+    "sseclient-py>=1.8.0",
     "streamlit>=1.44.1",
 ]
 

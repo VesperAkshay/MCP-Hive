@@ -1,21 +1,12 @@
 {
     "mcpServers": {
-      "filesystem": {
-        "command": "npx",
-        "args": [
-          "-y",
-          "@modelcontextprotocol/server-filesystem",
-          "D:\\MCP-Hive",
-          "D:\\MCP-Hive\\backend"
-        ]
+      "calculator_server": {
+        "type": "sse",
+        "url": "http://localhost:8081/sse"
       },
       "weather_server": {
         "command": "python",
         "args": ["D:/MCP-Hive/backend/test_server.py"]
-      },
-      "git_sse_server": {
-        "type": "sse",
-        "url": "http://localhost:8082/sse"
       }
     }
   }

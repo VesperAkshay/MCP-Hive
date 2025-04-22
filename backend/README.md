@@ -6,6 +6,8 @@ This repository contains the Python backend services for the MCP-Hive project. I
 ## Features
 - MCP (Model Control Protocol) client implementation
 - Multiple transport mechanisms (StdIO and SSE)
+- Unified MCP client with multi-server support
+- FastAPI web server with WebSocket support
 - Integration with Google's Gemini AI and Groq LLM models
 - SQLite-based conversation management and persistence
 - Asynchronous processing with asyncio
@@ -19,6 +21,7 @@ This repository contains the Python backend services for the MCP-Hive project. I
 - Groq API for additional LLM options
 - MCP (Model Control Protocol)
 - Server-Sent Events (SSE) for web transport
+- FastAPI and WebSockets for web interface
 - SQLite for conversation storage
 - dotenv for environment management
 - LangChain and LangGraph for AI agent frameworks
@@ -78,6 +81,16 @@ Run the LangChain React agent client with a configuration file:
 python mcp_client_config.py
 ```
 
+#### Unified MCP Client
+Run the unified client that supports multiple servers and transport methods:
+```
+# CLI mode (interactive command-line interface)
+python unified_mcp_client.py
+
+# Web server mode (access via browser at http://localhost:8000)
+python unified_mcp_client.py --server --port 8000
+```
+
 For testing with a simple MCP server:
 ```
 python test_server.py
@@ -89,9 +102,10 @@ python test_server_sse.py
 ```
 
 ## Project Structure
-- `client.py` - Main MCP client implementation with conversation management
+- `client.py` - StdIO-based MCP client implementation
 - `client_sse.py` - SSE-based MCP client for web transport
 - `mcp_client_config.py` - LangChain React agent with MCP tools integration
+- `unified_mcp_client.py` - Combined client with multi-server support and web interface
 - `test_server.py` - Simple MCP server for testing
 - `test_server_sse.py` - SSE-based MCP server for testing
 - `conversations.db` - SQLite database for storing conversations
@@ -118,6 +132,16 @@ The LangChain client implements the React agent pattern for more sophisticated r
 - ReAct pattern for reasoning and acting
 - Structured agent-based decision making
 - JSON configuration for multiple server setup
+
+### Unified MCP Client
+The unified client combines all previous approaches with new capabilities:
+- Support for multiple transport methods (StdIO and SSE)
+- Simultaneous connection to multiple MCP servers
+- Configuration-driven setup with JSON files
+- FastAPI web server with HTML UI
+- WebSocket support for real-time communication
+- Tool routing across multiple servers
+- Comprehensive command-line interface
 
 ## MCP Integration
 The backend uses the Model Control Protocol (MCP) to interact with AI services, enabling:
