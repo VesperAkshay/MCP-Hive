@@ -1,4 +1,8 @@
-# Chapter 3: LangChain React Agent Integration
+# Chapter 3: MCP Client with LangChain React Agent
+
+*Author: Akshay Patel*  
+*Date: April 21, 2025*  
+*Course: Advanced AI Integration Systems*
 
 This chapter documents the integration of LangChain's React agent pattern with the Model Control Protocol (MCP) in our MCP-Hive project. The implementation enables a more sophisticated reasoning pattern for interacting with MCP tools, providing superior context management and decision-making capabilities.
 

@@ -1,6 +1,6 @@
 # Chapter 1: Building an MCP Client with Multi-LLM Support
 
-*Author: Student Name*  
+*Author: Akshay Patel*  
 *Date: April 19, 2025*  
 *Course: Advanced AI Integration Systems*
 

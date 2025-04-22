@@ -40,6 +40,7 @@ git submodule status
 - Integration with Large Language Models (LLMs) using Model Control Protocol (MCP)
 - Support for multiple LLM providers (Google Gemini and Groq)
 - Multiple transport options (StdIO and SSE)
+- Unified client combining all transport methods with FastAPI web interface
 - Conversation persistence using SQLite
 - Efficient function/tool calling capabilities
 - Environment-based configuration
@@ -115,6 +116,14 @@ git submodule status
   cd backend
   python mcp_client_config.py path/to the config file/Mcphive_config.json
   ```
+- **Unified MCP Client**:
+  ```
+  cd backend
+  # CLI mode
+  python unified_mcp_client.py 
+  # Web server mode
+  python unified_mcp_client.py --server --port 8000
+  ```
 
 ## Development
 
@@ -131,6 +140,7 @@ For more details about the backend implementation, please refer to the [Backend 
 - [Chapter 1: MCP Client](notes/Chapter1-MCP-Client.md) - Core architecture of the MCP client
 - [Chapter 2: MCP Client with SSE](notes/Chapter2-MCP-Client-SSE.md) - SSE transport implementation
 - [Chapter 3: LangChain React Agent](notes/Chapter3-LangChain-React-Agent.md) - LangChain integration with React agent pattern
+- [Chapter 4: Unified MCP Client](notes/Chapter4-Unified-MCP-Client.md) - Unified client with multi-server support and web interface
 
 ## License
 [Your chosen license] 

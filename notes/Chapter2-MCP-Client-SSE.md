@@ -1,7 +1,7 @@
-# Chapter 2: Building an MCP Client with Server-Sent Events (SSE)
+# Chapter 2: MCP Client with SSE Transport
 
-*Author: Student Name*  
-*Date: May 3, 2025*  
+*Author: Akshay Patel*  
+*Date: April 20, 2025*  
 *Course: Advanced AI Integration Systems*
 
 ---
