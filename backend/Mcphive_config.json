@@ -7,6 +7,24 @@
       "weather_server": {
         "command": "python",
         "args": ["D:/MCP-Hive/backend/test_server.py"]
+      },
+      "filesystem": {
+        "command": "cmd",
+        "args": [
+          "/c", 
+          "npx",
+          "-y",
+          "@modelcontextprotocol/server-filesystem",
+          "D:/MCP-Hive/backend"
+        ]
+      },
+      "sqlite": {
+        "command": "uvx",
+        "args": [
+          "mcp-server-sqlite",
+          "--db-path",
+          "D:/MCP-Hive/backend/conversations.db"
+        ]
       }
     }
   }
