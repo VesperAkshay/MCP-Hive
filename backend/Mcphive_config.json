@@ -23,7 +23,7 @@
         "args": [
           "mcp-server-sqlite",
           "--db-path",
-          "D:/MCP-Hive/backend/conversations.db"
+          "D:/MCP-Hive/backend/conversation.db"
         ]
       }
     }
