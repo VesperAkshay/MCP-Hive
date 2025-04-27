@@ -16,6 +16,7 @@ dependencies = [
     "mcp>=1.4.1",
     "nest-asyncio>=1.6.0",
     "pillow>=11.1.0",
+    "python-docx>=1.1.2",
     "python-dotenv>=1.0.1",
     "requests>=2.32.3",
     "sseclient-py>=1.8.0",

@@ -1495,35 +1495,14 @@ class MCPWebServer:
     
     def run(self, host="0.0.0.0", port=8000):
         """Run the web server."""
-        uvicorn.run(self.app, host=host, port=port)
+        # Use a custom uvicorn config instead of run() to avoid blocking
+        config = uvicorn.Config(self.app, host=host, port=port, log_level="info")
+        server = uvicorn.Server(config)
+        return server.serve()
 
 # =============================================================================
 # Main Entry Point and CLI
 # =============================================================================
-
-async def main_async(args):
-    """Main asynchronous entry point."""
-    try:
-        # Create the MCP client
-        client = UnifiedMCPClient(args.config)
-        
-        # Connect to all servers
-        await client.connect_all_servers()
-        
-        if args.server:
-            # Run the web server
-            logger.info(f"Starting web server on {args.host}:{args.port}")
-            web_server = MCPWebServer(client)
-            web_server.run(host=args.host, port=args.port)
-        else:
-            # Run interactive CLI
-            try:
-                await client.chat_loop()
-            finally:
-                await client.cleanup()
-    except Exception as e:
-        logger.error(f"Error in main_async: {e}")
-        sys.exit(1)
 
 def main():
     """Main entry point."""
@@ -1540,8 +1519,36 @@ def main():
     if args.debug:
         logging.getLogger().setLevel(logging.DEBUG)
     
-    # Run the async main function
-    asyncio.run(main_async(args))
+    # Run the async main function using a single event loop approach
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    
+    try:
+        # Create the MCP client
+        client = UnifiedMCPClient(args.config)
+        
+        # Connect to all servers
+        loop.run_until_complete(client.connect_all_servers())
+        
+        if args.server:
+            # Start the web server
+            logger.info(f"Starting web server on {args.host}:{args.port}")
+            web_server = MCPWebServer(client)
+            # Use the same event loop for uvicorn
+            config = uvicorn.Config(web_server.app, host=args.host, port=args.port, log_level="info")
+            server = uvicorn.Server(config)
+            loop.run_until_complete(server.serve())
+        else:
+            # Run interactive CLI
+            try:
+                loop.run_until_complete(client.chat_loop())
+            finally:
+                loop.run_until_complete(client.cleanup())
+    except Exception as e:
+        logger.error(f"Error in main: {e}")
+        sys.exit(1)
+    finally:
+        loop.close()
 
 if __name__ == "__main__":
     main() 
