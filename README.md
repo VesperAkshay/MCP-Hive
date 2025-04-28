@@ -6,6 +6,7 @@ MCP-Hive is a comprehensive project that combines a modern frontend interface wi
 ## Project Structure
 - **Frontend**: Main application interface (to be implemented)
 - **Backend**: Python-based MCP service integrated as a Git submodule that provides AI model integration through multiple LLM providers
+- **Hive**: A new modular, scalable implementation of the backend with clean architecture
 - **Notes**: Architecture documentation and design notes
 
 ## Backend as a Git Submodule
@@ -41,6 +42,7 @@ git submodule status
 - Support for multiple LLM providers (Google Gemini and Groq)
 - Multiple transport options (StdIO and SSE)
 - Unified client combining all transport methods with FastAPI web interface
+- Modular and scalable backend architecture (Hive)
 - Conversation persistence using SQLite
 - Efficient function/tool calling capabilities
 - Environment-based configuration
@@ -58,6 +60,15 @@ git submodule status
 - Server-Sent Events (SSE)
 - SQLite for storage
 - LangChain and LangGraph for agent patterns
+
+### Hive (Modular Backend)
+- Clean, modular architecture with separation of concerns
+- Encapsulated components for better maintainability
+- Scalable design with well-defined interfaces
+- Enhanced error handling and resilience
+- Improved transport abstractions
+- Same powerful features as the original backend
+- Designed for future extensions and maintainability
 
 ## Getting Started
 
@@ -124,6 +135,14 @@ git submodule status
   # Web server mode
   python unified_mcp_client.py --server --port 8000
   ```
+- **Hive Modular Backend**:
+  ```
+  cd Hive
+  # CLI mode
+  python mcp_hive.py
+  # Web server mode
+  python mcp_hive.py --server --port 8000
+  ```
 
 ## Development
 
@@ -141,6 +160,7 @@ For more details about the backend implementation, please refer to the [Backend 
 - [Chapter 2: MCP Client with SSE](notes/Chapter2-MCP-Client-SSE.md) - SSE transport implementation
 - [Chapter 3: LangChain React Agent](notes/Chapter3-LangChain-React-Agent.md) - LangChain integration with React agent pattern
 - [Chapter 4: Unified MCP Client](notes/Chapter4-Unified-MCP-Client.md) - Unified client with multi-server support and web interface
+- [Chapter 5: Hive Modular Backend](notes/Chapter5-Hive-Modular-Backend.md) - Next-generation modular and scalable backend architecture
 
 ## License
 [Your chosen license] 
