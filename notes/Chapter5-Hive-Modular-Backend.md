@@ -1,5 +1,10 @@
 # Chapter 5: Hive Modular Backend
 
+*Author: Akshay Patel*  
+*Date: April 25, 2025*  
+*Course: Hive Modular Backend*
+
+
 ## Introduction
 
 The Hive Modular Backend represents a significant architectural evolution of the MCP-Hive project. While retaining all the capabilities of the original unified MCP client, the Hive implementation restructures the codebase into a clean, modular, and scalable architecture designed for better maintainability, extensibility, and robustness.

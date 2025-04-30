@@ -7,6 +7,7 @@ MCP-Hive is a comprehensive project that combines a modern frontend interface wi
 - **Frontend**: Main application interface (to be implemented)
 - **Backend**: Python-based MCP service integrated as a Git submodule that provides AI model integration through multiple LLM providers
 - **Hive**: A new modular, scalable implementation of the backend with clean architecture
+- **MCP-Hive-Desktop**: Cross-platform Electron desktop application with modern UI for interacting with the backend
 - **Notes**: Architecture documentation and design notes
 
 ## Backend as a Git Submodule
@@ -43,14 +44,17 @@ git submodule status
 - Multiple transport options (StdIO and SSE)
 - Unified client combining all transport methods with FastAPI web interface
 - Modular and scalable backend architecture (Hive)
+- Modern desktop application with intuitive UI
 - Conversation persistence using SQLite
 - Efficient function/tool calling capabilities
 - Environment-based configuration
 - LangChain integration with React agent pattern
 
 ## Tech Stack
-### Frontend (Planned)
-- Framework to be selected
+### Frontend (Implemented)
+- Electron for cross-platform desktop application
+- React for component-based UI
+- Tailwind CSS for styling
 
 ### Backend (Implemented)
 - Python 3.12+
@@ -75,6 +79,7 @@ git submodule status
 ### Prerequisites
 - Python 3.12 or higher
 - Git
+- Node.js 18+ and npm (for the desktop application)
 - pip or uv package manager
 
 ### Installation
@@ -108,7 +113,27 @@ git submodule status
      DEFAULT_LLM_PROVIDER=gemini
      ```
 
+5. Set up the desktop application:
+   ```
+   cd MCP-Hive-Desktop
+   npm install
+   ```
+
 ### Running the Application
+
+#### Desktop Application
+```
+cd MCP-Hive-Desktop
+npm start
+```
+
+For development with hot reload:
+```
+cd MCP-Hive-Desktop
+npm run dev
+```
+
+#### Backend Only
 - **StdIO-based Client**:
   ```
   cd backend
@@ -155,12 +180,30 @@ git submodule update --remote backend
 ### Backend Development
 For more details about the backend implementation, please refer to the [Backend README](backend/README.md).
 
+### Desktop Application Development
+For more details about the desktop application, please refer to the [Desktop README](MCP-Hive-Desktop/README.md).
+
+### Building the Desktop Application
+Build for all platforms:
+```
+cd MCP-Hive-Desktop
+npm run build
+```
+
+Or build for specific platforms:
+```
+npm run build:win    # Windows
+npm run build:mac    # macOS
+npm run build:linux  # Linux
+```
+
 ### Architecture Documentation
 - [Chapter 1: MCP Client](notes/Chapter1-MCP-Client.md) - Core architecture of the MCP client
 - [Chapter 2: MCP Client with SSE](notes/Chapter2-MCP-Client-SSE.md) - SSE transport implementation
 - [Chapter 3: LangChain React Agent](notes/Chapter3-LangChain-React-Agent.md) - LangChain integration with React agent pattern
 - [Chapter 4: Unified MCP Client](notes/Chapter4-Unified-MCP-Client.md) - Unified client with multi-server support and web interface
 - [Chapter 5: Hive Modular Backend](notes/Chapter5-Hive-Modular-Backend.md) - Next-generation modular and scalable backend architecture
+- [Chapter 6: MCP-Hive Desktop](notes/Chapter6-MCP-Hive-Desktop.md) - Cross-platform Electron desktop application with modern UI
 
 ## License
 [Your chosen license] 

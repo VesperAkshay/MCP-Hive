@@ -1,0 +1,90 @@
+{
+  "name": "mcp-hive-desktop",
+  "version": "1.0.0",
+  "description": "Desktop application for MCP-Hive",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "tailwindcss -i ./renderer/styles/globals.css -o ./renderer/styles/output.css --watch",
+    "build:css": "tailwindcss -i ./renderer/styles/globals.css -o ./renderer/styles/output.css --minify",
+    "build": "npm run build:css && electron-builder",
+    "build:win": "npm run build:css && electron-builder --win",
+    "build:mac": "npm run build:css && electron-builder --mac",
+    "build:linux": "npm run build:css && electron-builder --linux",
+    "postinstall": "electron-builder install-app-deps"
+  },
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^29.0.0",
+    "electron-builder": "^24.9.1",
+    "postcss": "^8.4.35",
+    "tailwindcss": "^3.4.1",
+    "autoprefixer": "^10.4.17"
+  },
+  "dependencies": {
+    "electron-is-dev": "^2.0.0",
+    "electron-log": "^5.0.1",
+    "class-variance-authority": "^0.7.0",
+    "clsx": "^2.1.0",
+    "lucide-react": "^0.323.0",
+    "tailwind-merge": "^2.2.1",
+    "tailwindcss-animate": "^1.0.7"
+  },
+  "build": {
+    "appId": "com.mcp.hive.desktop",
+    "productName": "MCP Hive Desktop",
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "assets/Hive-Icon.ico"
+    },
+    "mac": {
+      "target": [
+        "dmg"
+      ],
+      "icon": "assets/Hive-Icon.ico"
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "icon": "assets/Hive-Icon.ico"
+    },
+    "extraResources": [
+      {
+        "from": "../Hive",
+        "to": "Hive",
+        "filter": [
+          "**/*",
+          "!**/__pycache__/**",
+          "!**/.venv/**"
+        ]
+      }
+    ],
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "MCP Hive Desktop"
+    },
+    "files": [
+      "**/*",
+      "!**/node_modules/*/{CHANGELOG.md,README.md,README,readme.md,readme}",
+      "!**/node_modules/*/{test,__tests__,tests,powered-test,example,examples}",
+      "!**/node_modules/*.d.ts",
+      "!**/node_modules/.bin",
+      "!**/.vscode/**",
+      "!**/logs/**",
+      "!dist/**",
+      "!**/.idea/**",
+      "!**/.github/**",
+      "!**/.git/**"
+    ]
+  }
+} 

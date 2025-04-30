@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MCP Hive Desktop</title>
+  <link rel="stylesheet" href="styles/output.css">
+  <link rel="icon" href="../assets/Hive-Icon.ico" type="image/x-icon">
+  <script src="utils.js"></script>
+</head>
+<body class="bg-background text-foreground">
+  <div class="flex h-screen flex-col">
+    <!-- Header -->
+    <header class="border-b bg-card p-4">
+      <div class="container mx-auto flex items-center justify-between">
+        <h1 class="text-xl font-bold tracking-tight">MCP Hive Desktop</h1>
+        <div class="flex items-center space-x-2">
+          <span class="text-sm font-medium">Status:</span>
+          <span id="status-indicator" class="status-badge status-badge-connecting">Connecting...</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <div class="flex flex-1 overflow-hidden">
+      <!-- Sidebar -->
+      <div class="w-64 border-r bg-muted p-4 flex flex-col">
+        <!-- Providers Section -->
+        <div class="mb-6">
+          <h3 class="mb-2 text-sm font-medium uppercase text-muted-foreground">Providers</h3>
+          <ul id="provider-list" class="space-y-1">
+            <li class="text-sm italic text-muted-foreground">Loading...</li>
+          </ul>
+          <div class="mt-2">
+            <button id="switch-provider-btn" class="w-full rounded bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50" disabled>
+              Switch Provider
+            </button>
+          </div>
+        </div>
+
+        <!-- Servers Section -->
+        <div class="mb-6">
+          <div class="flex justify-between items-center mb-2">
+            <h3 class="text-sm font-medium uppercase text-muted-foreground">Connected Servers</h3>
+            <button id="manage-servers-btn" class="rounded bg-secondary p-1 text-xs font-medium text-secondary-foreground hover:bg-secondary/80">
+              Manage
+            </button>
+          </div>
+          <ul id="server-list" class="space-y-1">
+            <li class="text-sm italic text-muted-foreground">Loading...</li>
+          </ul>
+        </div>
+
+        <!-- Actions Section (at the bottom) -->
+        <div class="mt-auto pt-4">
+          <button id="restart-backend-btn" class="w-full rounded bg-secondary px-3 py-2 text-sm font-medium text-secondary-foreground hover:bg-secondary/80">
+            Restart Backend
+          </button>
+        </div>
+      </div>
+
+      <!-- Chat Area -->
+      <div class="flex flex-1 flex-col bg-background">
+        <!-- Chat Messages -->
+        <div id="chat-messages" class="flex-1 overflow-y-auto p-4">
+          <div class="chat-message-system">
+            Welcome to MCP Hive! Start a conversation by typing below.
+          </div>
+        </div>
+        
+        <!-- Chat Input -->
+        <div class="border-t bg-card p-4">
+          <div class="flex space-x-2">
+            <textarea 
+              id="chat-input" 
+              class="flex-1 rounded-md border bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50" 
+              placeholder="Type your message here..." 
+              rows="3"
+              disabled
+            ></textarea>
+            <button 
+              id="send-btn" 
+              class="self-end inline-flex h-10 w-10 items-center justify-center rounded-md bg-primary text-sm font-medium text-primary-foreground ring-offset-background transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
+              disabled
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-send"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+              <span class="sr-only">Send</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Load our UI Components -->
+  <script src="components/ui/button.js"></script>
+  <script src="components/ui/card.js"></script>
+  <script src="components/server-config-modal.js"></script>
+  
+  <!-- Load main app script -->
+  <script src="app.js"></script>
+</body>
+</html>
