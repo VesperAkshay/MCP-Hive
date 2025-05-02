@@ -1,19 +1,21 @@
 {
   "name": "mcp-hive-desktop",
   "version": "1.0.0",
-  "description": "Desktop application for MCP-Hive",
+  "description": "Desktop application for MCP Hive",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
     "dev": "tailwindcss -i ./renderer/styles/globals.css -o ./renderer/styles/output.css --watch",
     "build:css": "tailwindcss -i ./renderer/styles/globals.css -o ./renderer/styles/output.css --minify",
-    "build": "npm run build:css && electron-builder",
+    "build:backend": "cd ../Hive && python build_executable.py",
+    "build:app": "electron-builder --win --x64",
+    "build": "npm run build:backend && npm run build:app",
     "build:win": "npm run build:css && electron-builder --win",
     "build:mac": "npm run build:css && electron-builder --mac",
     "build:linux": "npm run build:css && electron-builder --linux",
     "postinstall": "electron-builder install-app-deps"
   },
-  "author": "",
+  "author": "MCP Hive Team",
   "license": "MIT",
   "devDependencies": {
     "electron": "^29.0.0",
@@ -24,7 +26,7 @@
   },
   "dependencies": {
     "electron-is-dev": "^2.0.0",
-    "electron-log": "^5.0.1",
+    "electron-log": "^4.4.8",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.0",
     "lucide-react": "^0.323.0",
@@ -32,16 +34,33 @@
     "tailwindcss-animate": "^1.0.7"
   },
   "build": {
-    "appId": "com.mcp.hive.desktop",
-    "productName": "MCP Hive Desktop",
+    "appId": "com.mcp.hive",
+    "productName": "MCP Hive",
     "directories": {
       "output": "dist"
     },
+    "files": [
+      "main.js",
+      "preload.js",
+      "config-manager.js",
+      "renderer/**/*",
+      "assets/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "../Hive/dist/mcp_hive_backend.exe",
+        "to": "Hive/mcp_hive_backend.exe",
+        "filter": ["**/*"]
+      },
+      {
+        "from": "../Hive/Mcphive_config.json",
+        "to": "Hive/Mcphive_config.json"
+      }
+    ],
     "win": {
-      "target": [
-        "nsis"
-      ],
-      "icon": "assets/Hive-Icon.ico"
+      "target": ["nsis"],
+      "icon": "assets/Hive-Icon.ico",
+      "artifactName": "${productName}-Setup-${version}.${ext}"
     },
     "mac": {
       "target": [
@@ -55,17 +74,6 @@
       ],
       "icon": "assets/Hive-Icon.ico"
     },
-    "extraResources": [
-      {
-        "from": "../Hive",
-        "to": "Hive",
-        "filter": [
-          "**/*",
-          "!**/__pycache__/**",
-          "!**/.venv/**"
-        ]
-      }
-    ],
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,

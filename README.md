@@ -1,209 +1,101 @@
-# MCP-Hive Project
+# MCP-Hive
+
+A desktop application for the Model Control Protocol (MCP) with an integrated Python backend packaged as an executable.
 
 ## Overview
-MCP-Hive is a comprehensive project that combines a modern frontend interface with a powerful Python backend system. This repository houses the main project structure along with the backend as a Git submodule for separate versioning and management.
 
-## Project Structure
-- **Frontend**: Main application interface (to be implemented)
-- **Backend**: Python-based MCP service integrated as a Git submodule that provides AI model integration through multiple LLM providers
-- **Hive**: A new modular, scalable implementation of the backend with clean architecture
-- **MCP-Hive-Desktop**: Cross-platform Electron desktop application with modern UI for interacting with the backend
-- **Notes**: Architecture documentation and design notes
+MCP-Hive is a desktop application that integrates with various AI model providers through the Model Control Protocol. The application consists of:
 
-## Backend as a Git Submodule
-The backend is maintained as a Git submodule, which provides several benefits:
+1. An Electron-based frontend for the user interface
+2. A Python backend (packaged as an executable) for handling the AI model connections and processing
 
-- **Independent Version Control**: The backend has its own Git repository and history, allowing for separate branching, tagging, and versioning.
-- **Code Isolation**: Changes to the backend don't require changes to the main repository and vice versa.
-- **Cleaner Development Workflow**: Frontend and backend teams can work independently without interfering with each other's code.
-- **Dependency Management**: The backend manages its own dependencies and environment separately from the main project.
-- **Reusability**: The backend can be used by other projects by simply adding it as a submodule.
-
-### Working with the Submodule
-When cloning this repository, you need to explicitly initialize and update the submodule:
-```
-git submodule init
-git submodule update
-```
-
-When making changes to the backend:
-1. Navigate to the backend directory: `cd backend`
-2. Make your changes
-3. Commit and push changes from within the submodule
-4. Update the main repository to point to the new commit
-
-### Submodule Path and URL
-The backend submodule is located at `./backend` and points to its own repository. You can view the submodule details with:
-```
-git submodule status
-```
-
-## Features
-- Integration with Large Language Models (LLMs) using Model Control Protocol (MCP)
-- Support for multiple LLM providers (Google Gemini and Groq)
-- Multiple transport options (StdIO and SSE)
-- Unified client combining all transport methods with FastAPI web interface
-- Modular and scalable backend architecture (Hive)
-- Modern desktop application with intuitive UI
-- Conversation persistence using SQLite
-- Efficient function/tool calling capabilities
-- Environment-based configuration
-- LangChain integration with React agent pattern
-
-## Tech Stack
-### Frontend (Implemented)
-- Electron for cross-platform desktop application
-- React for component-based UI
-- Tailwind CSS for styling
-
-### Backend (Implemented)
-- Python 3.12+
-- Google Generative AI SDK
-- Groq LLM API
-- MCP (Model Control Protocol)
-- Server-Sent Events (SSE)
-- SQLite for storage
-- LangChain and LangGraph for agent patterns
-
-### Hive (Modular Backend)
-- Clean, modular architecture with separation of concerns
-- Encapsulated components for better maintainability
-- Scalable design with well-defined interfaces
-- Enhanced error handling and resilience
-- Improved transport abstractions
-- Same powerful features as the original backend
-- Designed for future extensions and maintainability
-
-## Getting Started
+## Building and Packaging
 
 ### Prerequisites
-- Python 3.12 or higher
-- Git
-- Node.js 18+ and npm (for the desktop application)
-- pip or uv package manager
 
-### Installation
-1. Clone this repository:
+- Node.js and npm
+- Python 3.10+ with pip
+- PyInstaller (`pip install pyinstaller`)
+- Git
+
+### Installation Steps
+
+1. Clone the repository:
    ```
    git clone https://github.com/yourusername/MCP-Hive.git
+   cd MCP-Hive
    ```
 
-2. Initialize and update the backend submodule:
+2. Install Python dependencies for the backend:
    ```
-   git submodule init
-   git submodule update
-   ```
-
-3. Set up the backend:
-   ```
-   cd backend
-   python -m venv .venv
-   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+   cd Hive
    pip install -r requirements.txt
+   cd ..
    ```
 
-4. Configure environment variables:
-   - Create a `.env` file in the backend directory based on `.env.example`
-   - Add your API keys:
-     ```
-     GEMINI_API_KEY=your_gemini_api_key
-     GROQ_API_KEY=your_groq_api_key
-     CONVERSATION_DB_PATH=./conversations.db
-     MAX_CONTEXT_TOKENS=8000
-     DEFAULT_LLM_PROVIDER=gemini
-     ```
-
-5. Set up the desktop application:
+3. Install Node.js dependencies for the frontend:
    ```
    cd MCP-Hive-Desktop
    npm install
+   cd ..
    ```
 
-### Running the Application
+### Building the Executable Backend
 
-#### Desktop Application
-```
-cd MCP-Hive-Desktop
-npm start
-```
+The backend is packaged as an executable using PyInstaller:
 
-For development with hot reload:
 ```
-cd MCP-Hive-Desktop
-npm run dev
+cd Hive
+python build_executable.py
+cd ..
 ```
 
-#### Backend Only
-- **StdIO-based Client**:
-  ```
-  cd backend
-  python client.py test_server.py
-  ```
-- **SSE-based Client**:
-  ```
-  cd backend
-  # First start the SSE server
-  python test_server_sse.py
-  # In another terminal
-  python client_sse.py http://localhost:8081/sse
-  ```
-- **LangChain React Agent Client**:
-  ```
-  cd backend
-  python mcp_client_config.py path/to the config file/Mcphive_config.json
-  ```
-- **Unified MCP Client**:
-  ```
-  cd backend
-  # CLI mode
-  python unified_mcp_client.py 
-  # Web server mode
-  python unified_mcp_client.py --server --port 8000
-  ```
-- **Hive Modular Backend**:
-  ```
-  cd Hive
-  # CLI mode
-  python mcp_hive.py
-  # Web server mode
-  python mcp_hive.py --server --port 8000
-  ```
+This script:
+- Builds the Python backend as a standalone executable
+- Copies the executable and necessary resources to the Electron resources directory
 
-## Development
+### Building the Electron App with Packaged Backend
 
-### Updating the Backend Submodule
-To update the backend submodule to the latest version:
-```
-git submodule update --remote backend
-```
+After building the backend, build the complete Electron app:
 
-### Backend Development
-For more details about the backend implementation, please refer to the [Backend README](backend/README.md).
-
-### Desktop Application Development
-For more details about the desktop application, please refer to the [Desktop README](MCP-Hive-Desktop/README.md).
-
-### Building the Desktop Application
-Build for all platforms:
 ```
 cd MCP-Hive-Desktop
 npm run build
 ```
 
-Or build for specific platforms:
+This command:
+1. Runs the backend build script first (`npm run build:backend`)
+2. Packages the Electron app with the executable backend (`npm run build:app`)
+
+The packaged application will be available in the `MCP-Hive-Desktop/dist` directory.
+
+## Development
+
+For development, you can run the app without packaging:
+
 ```
-npm run build:win    # Windows
-npm run build:mac    # macOS
-npm run build:linux  # Linux
+cd MCP-Hive-Desktop
+npm start
 ```
 
-### Architecture Documentation
-- [Chapter 1: MCP Client](notes/Chapter1-MCP-Client.md) - Core architecture of the MCP client
-- [Chapter 2: MCP Client with SSE](notes/Chapter2-MCP-Client-SSE.md) - SSE transport implementation
-- [Chapter 3: LangChain React Agent](notes/Chapter3-LangChain-React-Agent.md) - LangChain integration with React agent pattern
-- [Chapter 4: Unified MCP Client](notes/Chapter4-Unified-MCP-Client.md) - Unified client with multi-server support and web interface
-- [Chapter 5: Hive Modular Backend](notes/Chapter5-Hive-Modular-Backend.md) - Next-generation modular and scalable backend architecture
-- [Chapter 6: MCP-Hive Desktop](notes/Chapter6-MCP-Hive-Desktop.md) - Cross-platform Electron desktop application with modern UI
+This will start the Electron app and use the executable backend if available, or fall back to using the Python interpreter if needed.
+
+## Configuration
+
+### API Keys
+
+Set up your AI provider API keys in the `.env` file in the `Hive` directory:
+
+```
+GOOGLE_API_KEY=your_google_api_key_here
+GROQ_API_KEY=your_groq_api_key_here
+DEFAULT_LLM_PROVIDER=gemini
+```
+
+### MCP Servers
+
+Configure MCP servers through the application's settings interface or by directly editing the `Mcphive_config.json` file.
 
 ## License
-[Your chosen license] 
+
+[MIT License](LICENSE.md) 

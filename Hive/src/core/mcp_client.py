@@ -188,106 +188,169 @@ class MCPClient:
         
         # Continue processing tool calls until LLM provides a final answer
         try:
-            while True:
-                # Get response from current LLM provider
-                llm_response = await self.current_provider.process_query(
-                    query, 
-                    conversation_history, 
-                    self
-                )
+            max_steps = 10  # Maximum number of tool calling steps to prevent infinite loops
+            steps = 0
+            
+            while steps < max_steps:
+                steps += 1
                 
-                has_function_call = llm_response["has_function_call"]
-                function_call_part = llm_response["function_call_part"]
-                tool_name = llm_response["tool_name"]
-                tool_args = llm_response["tool_args"]
-                provider = llm_response["provider"]
-                
-                # Collect any text responses
-                if llm_response["final_text"]:
-                    final_text.extend(llm_response["final_text"])
-                
-                # Process function calls if present
-                if has_function_call:
-                    logger.info(f"LLM requested tool call: {tool_name} with args {tool_args}")
-                    
-                    # Add model's tool call to conversation history
-                    model_msg_id = self.conversation_manager.add_message(
-                        role='model',
-                        parent_id=self.latest_message_id,
-                        tool_name=tool_name,
-                        tool_args=tool_args,
-                        content=None,
-                        llm_provider=provider
+                try:
+                    # Get response from current LLM provider
+                    llm_response = await self.current_provider.process_query(
+                        query, 
+                        conversation_history, 
+                        self
                     )
-                    self.latest_message_id = model_msg_id
                     
-                    # Find the server that provides this tool
-                    server_conn = self.server_tools.get(tool_name)
-                    if not server_conn:
-                        logger.error(f"Tool '{tool_name}' not found on any connected server")
-                        function_response = {"error": f"Tool '{tool_name}' not available. Available tools are: {', '.join(self.server_tools.keys())}"}
+                    # Check if there was an error with the provider
+                    if llm_response.get("error", False):
+                        # Add provider error message to conversation history
+                        error_message = llm_response.get("final_text", ["Service unavailable"])[0]
+                        error_msg_id = self.conversation_manager.add_message(
+                            role='system',
+                            parent_id=self.latest_message_id,
+                            content=error_message,
+                            llm_provider=self.current_provider_name
+                        )
+                        self.latest_message_id = error_msg_id
+                        
+                        # Return error response to user
+                        return {
+                            "response": error_message,
+                            "conversation_id": self.conversation_manager.current_conversation_id,
+                            "error": True
+                        }
+                    
+                    has_function_call = llm_response["has_function_call"]
+                    function_call_part = llm_response["function_call_part"]
+                    tool_name = llm_response["tool_name"]
+                    tool_args = llm_response["tool_args"]
+                    provider = llm_response["provider"]
+                    
+                    # Collect any text responses
+                    if llm_response["final_text"]:
+                        final_text.extend(llm_response["final_text"])
+                    
+                    # Process function calls if present
+                    if has_function_call:
+                        logger.info(f"LLM requested tool call: {tool_name} with args {tool_args}")
+                        
+                        # Add model's tool call to conversation history
+                        model_msg_id = self.conversation_manager.add_message(
+                            role='model',
+                            parent_id=self.latest_message_id,
+                            tool_name=tool_name,
+                            tool_args=tool_args,
+                            content=None,
+                            llm_provider=provider
+                        )
+                        self.latest_message_id = model_msg_id
+                        
+                        # Find the server that provides this tool
+                        server_conn = self.server_tools.get(tool_name)
+                        if not server_conn:
+                            logger.error(f"Tool '{tool_name}' not found on any connected server")
+                            function_response = {"error": f"Tool '{tool_name}' not available. Available tools are: {', '.join(self.server_tools.keys())}"}
+                        else:
+                            # Execute the requested tool
+                            try:
+                                result = await server_conn.call_tool(tool_name, tool_args)
+                                function_response = {"result": result.content}
+                            except Exception as e:
+                                logger.error(f"Error executing tool '{tool_name}': {e}")
+                                function_response = {"error": str(e)}
+                        
+                        # Add tool response to conversation history
+                        tool_msg_id = self.conversation_manager.add_message(
+                            role='tool',
+                            parent_id=model_msg_id,
+                            tool_name=tool_name,
+                            tool_result=ensure_json_serializable(function_response),
+                            content=None,
+                            llm_provider=provider
+                        )
+                        self.latest_message_id = tool_msg_id
+                        
+                        # Get updated conversation history
+                        conversation_history = self.conversation_manager.get_conversation_for_context(
+                            latest_message_id=tool_msg_id,
+                            include_all_paths=False
+                        )
+                        
+                        # Continue the loop to get the LLM's response to the tool output
                     else:
-                        # Execute the requested tool
-                        try:
-                            result = await server_conn.call_tool(tool_name, tool_args)
-                            function_response = {"result": result.content}
-                        except Exception as e:
-                            logger.error(f"Error executing tool '{tool_name}': {e}")
-                            function_response = {"error": str(e)}
+                        # LLM has provided a final response, add to conversation history
+                        final_content = "\n".join(final_text) if final_text else None
+                        final_msg_id = self.conversation_manager.add_message(
+                            role='model',
+                            parent_id=self.latest_message_id,
+                            content=final_content,
+                            llm_provider=provider
+                        )
+                        self.latest_message_id = final_msg_id
+                        
+                        # Return final response
+                        return {
+                            "response": final_content,
+                            "conversation_id": self.conversation_manager.current_conversation_id
+                        }
+                
+                except Exception as e:
+                    logger.error(f"Error processing query with provider {self.current_provider_name}: {e}")
+                    error_message = f"Error communicating with {self.current_provider_name}: {str(e)}"
                     
-                    # Add tool response to conversation history
-                    tool_msg_id = self.conversation_manager.add_message(
-                        role='tool',
-                        parent_id=model_msg_id,
-                        tool_name=tool_name,
-                        tool_result=ensure_json_serializable(function_response),
-                        content=None,
-                        llm_provider=provider
+                    # Add error message to conversation history
+                    error_msg_id = self.conversation_manager.add_message(
+                        role='system',
+                        parent_id=self.latest_message_id,
+                        content=error_message,
+                        llm_provider=self.current_provider_name
                     )
-                    self.latest_message_id = tool_msg_id
+                    self.latest_message_id = error_msg_id
                     
-                    # Get updated conversation history
-                    conversation_history = self.conversation_manager.get_conversation_for_context(
-                        latest_message_id=tool_msg_id,
-                        include_all_paths=False
-                    )
-                else:
-                    # No more function calls, exit the loop
-                    break
+                    # Return error response
+                    return {
+                        "response": error_message,
+                        "conversation_id": self.conversation_manager.current_conversation_id,
+                        "error": True
+                    }
             
-            # Add final model response to conversation history
-            final_response = "\n".join([text for text in final_text if text is not None and text.strip()])
-            if final_response:
-                final_msg_id = self.conversation_manager.add_message(
-                    role='model',
-                    parent_id=self.latest_message_id,
-                    content=final_response,
-                    llm_provider=provider
-                )
-                self.latest_message_id = final_msg_id
+            # If we reach here, we've hit the maximum steps
+            max_steps_error = f"Reached maximum number of tool calling steps ({max_steps}). This may indicate a loop in the conversation."
+            logger.warning(max_steps_error)
             
-            # Filter out None values and empty strings
-            filtered_text = [text for text in final_text if text is not None and text.strip()]
-            
-            # Return empty string if no valid responses
-            if not filtered_text:
-                response_text = "No response generated."
-            else:
-                # Combine all response segments
-                response_text = "\n".join(filtered_text)
+            # Add error message to conversation history
+            error_msg_id = self.conversation_manager.add_message(
+                role='system',
+                parent_id=self.latest_message_id,
+                content=max_steps_error,
+                llm_provider=self.current_provider_name
+            )
+            self.latest_message_id = error_msg_id
             
             return {
-                "response": response_text,
-                "conversation_id": self.conversation_manager.current_conversation_id,
-                "provider": self.current_provider_name
+                "response": max_steps_error,
+                "conversation_id": self.conversation_manager.current_conversation_id
             }
             
         except Exception as e:
-            logger.error(f"Error processing query: {e}")
+            # Handle any unexpected errors
+            error_message = f"Unexpected error processing your query: {str(e)}"
+            logger.exception(error_message)
+            
+            # Add error message to conversation history
+            error_msg_id = self.conversation_manager.add_message(
+                role='system',
+                parent_id=user_msg_id,
+                content=error_message,
+                llm_provider=self.current_provider_name
+            )
+            self.latest_message_id = error_msg_id
+            
             return {
-                "response": f"Error: {str(e)}",
+                "response": error_message,
                 "conversation_id": self.conversation_manager.current_conversation_id,
-                "error": str(e)
+                "error": True
             }
     
     async def chat_loop(self):

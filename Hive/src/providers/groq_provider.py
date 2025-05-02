@@ -3,6 +3,8 @@
 import os
 import json
 import logging
+import time
+import httpx
 from groq import Groq
 
 from .provider_interface import LLMProviderInterface
@@ -18,13 +20,22 @@ class GroqProvider(LLMProviderInterface):
         if not api_key:
             raise ValueError("GROQ_API_KEY not found. Please add it to your .env file.")
         
-        self.model_name = os.getenv("GROQ_MODEL", "llama-3-70b-8192")
+        self.model_name = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
         self.api_key = api_key
         self.groq_client = None
+        self.max_retries = 3
+        self.retry_delay = 2  # seconds
     
     async def initialize(self):
         """Initialize the Groq client."""
-        self.groq_client = Groq(api_key=self.api_key)
+        try:
+            self.groq_client = Groq(api_key=self.api_key)
+            # Test connection to verify API key and service availability
+            models = self.groq_client.models.list()
+            logger.info(f"Successfully connected to Groq API. Available models: {[m.id for m in models.data]}")
+        except Exception as e:
+            logger.error(f"Failed to initialize Groq client: {str(e)}")
+            raise RuntimeError(f"Failed to initialize Groq client: {str(e)}")
     
     def convert_tools(self, mcp_tools):
         """Convert MCP tools to Groq format"""
@@ -50,7 +61,7 @@ class GroqProvider(LLMProviderInterface):
         return groq_tools
     
     async def process_query(self, query, conversation_history, mcp_client):
-        """Process a query using Groq"""
+        """Process a query using Groq with retry logic for service errors"""
         # Format conversation for Groq API
         groq_messages = mcp_client.conversation_manager.format_messages_for_groq(conversation_history)
         
@@ -64,13 +75,63 @@ class GroqProvider(LLMProviderInterface):
         # Add system message at the beginning
         complete_messages = [system_message] + groq_messages
         
-        # Send request to Groq with available tools
-        response = self.groq_client.chat.completions.create(
-            model=self.model_name,
-            messages=complete_messages,
-            tools=self.function_declarations,
-            tool_choice="auto"
-        )
+        # Initialize response and retry counter
+        response = None
+        retries = 0
+        last_error = None
+        
+        # Retry loop for handling transient errors
+        while retries < self.max_retries:
+            try:
+                # Send request to Groq with available tools
+                response = self.groq_client.chat.completions.create(
+                    model=self.model_name,
+                    messages=complete_messages,
+                    tools=self.function_declarations,
+                    tool_choice="auto",
+                    timeout=30  # Set a timeout to avoid hanging
+                )
+                
+                # If successful, break out of retry loop
+                break
+                
+            except httpx.HTTPStatusError as e:
+                if e.response.status_code == 503:
+                    retries += 1
+                    last_error = f"Groq service unavailable (503). Retry {retries}/{self.max_retries}"
+                    logger.warning(last_error)
+                    if retries < self.max_retries:
+                        # Wait before retrying with exponential backoff
+                        time.sleep(self.retry_delay * (2 ** (retries - 1)))
+                    continue
+                else:
+                    logger.error(f"HTTP error from Groq API: {e.response.status_code} - {e.response.text}")
+                    raise RuntimeError(f"Error from Groq API: {e.response.status_code} - {e.response.text}")
+                    
+            except Exception as e:
+                retries += 1
+                last_error = f"Error connecting to Groq: {str(e)}. Retry {retries}/{self.max_retries}"
+                logger.warning(last_error)
+                if retries < self.max_retries:
+                    # Wait before retrying with exponential backoff
+                    time.sleep(self.retry_delay * (2 ** (retries - 1)))
+                else:
+                    logger.error(f"Failed to connect to Groq after {self.max_retries} attempts: {str(e)}")
+                    raise RuntimeError(f"Failed to connect to Groq after {self.max_retries} attempts. Last error: {str(e)}")
+        
+        # Check if we got a valid response
+        if response is None:
+            error_msg = "Groq service is currently unavailable. Please try again later."
+            logger.error(error_msg)
+            return {
+                "has_function_call": False,
+                "function_call_part": None,
+                "tool_name": None,
+                "tool_args": None,
+                "final_text": [error_msg + f" Technical details: {last_error}"],
+                "provider": "groq",
+                "error": True
+            }
         
         # Prepare collection for final response text
         final_text = []
@@ -99,5 +160,6 @@ class GroqProvider(LLMProviderInterface):
             "tool_name": tool_name,
             "tool_args": tool_args,
             "final_text": final_text,
-            "provider": "groq"
-        } 
+            "provider": "groq",
+            "error": False
+        }

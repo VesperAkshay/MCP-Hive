@@ -356,7 +356,7 @@ async function restartBackend() {
     updateStatus('error', 'Error');
     addSystemMessage(`Failed to restart backend: ${error.message}`);
   }
-}
+} 
 
 // Initialize server config modal
 let serverConfigModal;

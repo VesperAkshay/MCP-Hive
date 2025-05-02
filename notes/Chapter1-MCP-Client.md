@@ -41,7 +41,7 @@ The architecture of our StdIO-based MCP Client implementation consists of severa
 │    Gemini     │                   │     Groq      │
 │    Provider   │                   │    Provider   │
 └───────────────┘                   └───────────────┘
-          │                                  │
+          │                                 │
           └──────────────────┬──────────────┘
                              ▼
                       ┌───────────────┐

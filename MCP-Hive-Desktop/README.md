@@ -1,6 +1,80 @@
-# MCP Hive Desktop
+# MCP-Hive Desktop Application
 
-Desktop application for the MCP-Hive backend, providing a modern UI for interacting with LLMs using the Model Context Protocol.
+The Electron-based desktop application for MCP-Hive with packaged Python backend.
+
+## Overview
+
+This desktop application provides a user interface for interacting with the MCP-Hive backend, which has been packaged as an executable to eliminate the need for Python installation or dependencies on the user's machine.
+
+## Build Process
+
+### Prerequisites
+
+- Node.js and npm
+- Python 3.10+ with pip (for building the backend)
+- PyInstaller (`pip install pyinstaller`)
+
+### Building Steps
+
+1. Install dependencies:
+   ```
+   npm install
+   ```
+
+2. Build the backend executable:
+   ```
+   npm run build:backend
+   ```
+   This will run the Python script that packages the backend as an executable and copies it to the resources directory.
+
+3. Package the Electron app:
+   ```
+   npm run build:app
+   ```
+   This will bundle the app with the executable backend.
+
+4. Alternatively, run the complete build process:
+   ```
+   npm run build
+   ```
+   This will execute both of the above steps in sequence.
+
+## Development
+
+For development purposes, you can run the app without packaging:
+
+```
+npm start
+```
+
+This will start the Electron app in development mode with DevTools enabled.
+
+## Application Structure
+
+- `main.js` - The main Electron process
+- `preload.js` - Preload script for secure IPC communication
+- `renderer/` - Frontend UI components and pages
+- `config-manager.js` - Handles MCP server configuration
+- `resources/` - Contains the packaged backend executable and configuration files (created during build)
+
+## Configuration
+
+The application uses several configuration files:
+
+1. `.env` file (in the Hive directory) - Contains API keys and server settings
+2. `Mcphive_config.json` - Contains MCP server configurations
+
+The application will create these files with default values if they don't exist.
+
+## Packaging Options
+
+You can customize the packaging options in the `build` section of `package.json`:
+
+- `appId` - The application ID
+- `productName` - The name of the application
+- `directories.output` - The output directory for the packaged app
+- `extraResources` - Additional files to include in the package
+- `win/mac/linux` - Platform-specific build configurations
 
 ## Features
 
@@ -9,63 +83,6 @@ Desktop application for the MCP-Hive backend, providing a modern UI for interact
 - Manage MCP server configurations directly from the UI
 - Built-in backend server management
 - Cross-platform support (Windows, macOS, Linux)
-
-## Development
-
-### Prerequisites
-
-- Node.js 18+ and npm
-- Python 3.10+ (for the backend)
-
-### Setup
-
-1. Clone the repository:
-   ```
-   git clone https://github.com/yourusername/MCP-Hive.git
-   cd MCP-Hive
-   ```
-
-2. Install dependencies:
-   ```
-   cd MCP-Hive-Desktop
-   npm install
-   ```
-
-3. Start the Tailwind CSS watcher:
-   ```
-   npm run dev
-   ```
-
-4. In a separate terminal, start the application:
-   ```
-   npm start
-   ```
-
-## Building for Production
-
-### Building for All Platforms
-
-Build for all supported platforms:
-```
-npm run build
-```
-
-### Building for Specific Platforms
-
-Build only for Windows:
-```
-npm run build:win
-```
-
-Build only for macOS:
-```
-npm run build:mac
-```
-
-Build only for Linux:
-```
-npm run build:linux
-```
 
 ## MCP Server Configuration
 

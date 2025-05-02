@@ -4,7 +4,6 @@ import os
 import logging
 from typing import Dict, Optional
 
-from .gemini_provider import GeminiProvider
 from .groq_provider import GroqProvider
 
 logger = logging.getLogger(__name__)
@@ -14,7 +13,7 @@ async def create_provider(provider_name: str, api_key: Optional[str] = None) -> 
     Create an LLM provider instance based on name.
     
     Args:
-        provider_name: The name of the provider (gemini, groq)
+        provider_name: The name of the provider (currently only groq is supported)
         api_key: Optional API key override (if None, will use environment variables)
         
     Returns:
@@ -23,16 +22,12 @@ async def create_provider(provider_name: str, api_key: Optional[str] = None) -> 
     Raises:
         ValueError: If the provider name is unknown or API key not available
     """
+    # Automatically redirect all requests to Groq
     if provider_name.lower() == "gemini":
-        key = api_key or os.getenv("GEMINI_API_KEY")
-        if not key:
-            raise ValueError("GEMINI_API_KEY not found in environment variables")
+        logger.warning("Gemini provider is not supported in this build. Using Groq instead.")
+        provider_name = "groq"
         
-        provider = GeminiProvider(key)
-        await provider.initialize()
-        return provider
-        
-    elif provider_name.lower() == "groq":
+    if provider_name.lower() == "groq":
         key = api_key or os.getenv("GROQ_API_KEY")
         if not key:
             raise ValueError("GROQ_API_KEY not found in environment variables")
@@ -42,7 +37,7 @@ async def create_provider(provider_name: str, api_key: Optional[str] = None) -> 
         return provider
         
     else:
-        raise ValueError(f"Unknown provider: {provider_name}")
+        raise ValueError(f"Unknown provider: {provider_name}. Only Groq is supported in this build.")
 
 
 async def create_all_available_providers() -> Dict[str, object]:
@@ -54,20 +49,15 @@ async def create_all_available_providers() -> Dict[str, object]:
     """
     providers = {}
     
-    # Try to create Gemini provider
-    gemini_api_key = os.getenv("GEMINI_API_KEY")
-    if gemini_api_key:
-        try:
-            providers["gemini"] = await create_provider("gemini", gemini_api_key)
-            logger.info("Initialized Gemini provider")
-        except Exception as e:
-            logger.error(f"Failed to initialize Gemini provider: {e}")
+    # Skip trying to create Gemini provider
     
     # Try to create Groq provider
-    groq_api_key = os.getenv("GROQ_API_KEY")
+    groq_api_key = os.getenv("GROQ_API_KEY") or os.getenv("GOOGLE_API_KEY")  # Try to use Google API key as fallback
     if groq_api_key:
         try:
             providers["groq"] = await create_provider("groq", groq_api_key)
+            # Also set as default provider
+            providers["default"] = providers["groq"]
             logger.info("Initialized Groq provider")
         except Exception as e:
             logger.error(f"Failed to initialize Groq provider: {e}")

@@ -3,3 +3,6 @@ conversations.db
 _pycache_
 __pycache__
 __pycache__
+dist 
+build
+mcp_hive_backend.spec

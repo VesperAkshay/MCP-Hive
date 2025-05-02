@@ -51,31 +51,27 @@ function createWindow() {
 async function startPythonBackend() {
   return new Promise((resolve, reject) => {
     try {
-      // Get the path to the Python executable and script
+      // Get the path to the resources folder
       const resourcesPath = isDev 
         ? path.join(__dirname, '../Hive') 
         : path.join(process.resourcesPath, 'Hive');
       
       log.info(`Resources path: ${resourcesPath}`);
       
-      // Check if there's a virtual environment
-      let pythonPath;
-      if (fs.existsSync(path.join(resourcesPath, '.venv', 'Scripts', 'python.exe'))) {
-        pythonPath = path.join(resourcesPath, '.venv', 'Scripts', 'python.exe');
-      } else {
-        pythonPath = 'python';
-      }
+      // Path to the executable backend
+      const backendExe = process.platform === 'win32' 
+        ? path.join(resourcesPath, 'mcp_hive_backend.exe') 
+        : path.join(resourcesPath, 'mcp_hive_backend');
       
       // Create a sample .env file if it doesn't exist
       const envPath = path.join(resourcesPath, '.env');
       if (!fs.existsSync(envPath)) {
         log.info('Creating sample .env file');
         const sampleEnvContent = `# API Keys for LLM Providers (Replace with your actual keys)
-GOOGLE_API_KEY=your_google_api_key_here
 GROQ_API_KEY=your_groq_api_key_here
 
 # Default provider
-DEFAULT_LLM_PROVIDER=gemini
+DEFAULT_LLM_PROVIDER=groq
 
 # Server settings
 SERVER_HOST=127.0.0.1
@@ -103,25 +99,23 @@ SERVER_PORT=8000
       
       log.info('Loaded environment variables from .env file');
       
-      // Path to mcp_hive.py
-      const hiveScriptPath = path.join(resourcesPath, 'mcp_hive.py');
-      
       // Make sure the config file exists before starting the backend
       configManager.ensureConfigExists();
       
-      log.info(`Starting Python backend: ${pythonPath} ${hiveScriptPath} --server --port ${backendPort}`);
+      log.info(`Starting backend executable: ${backendExe} --server --port ${backendPort}`);
       
-      // Spawn the Python process with the environment variables from .env
-      pythonProcess = spawn(pythonPath, [hiveScriptPath, '--server', '--port', backendPort.toString()], {
+      // Spawn the backend executable process with the environment variables from .env
+      pythonProcess = spawn(backendExe, ['--server', '--port', backendPort.toString()], {
         cwd: resourcesPath,
         stdio: ['pipe', 'pipe', 'pipe'],
-        env: { ...process.env, ...envVars }
+        env: { ...process.env, ...envVars },
+        windowsHide: true // Hide the console window on Windows
       });
       
       // Handle stdout
       pythonProcess.stdout.on('data', (data) => {
         const output = data.toString().trim();
-        log.info(`Python stdout: ${output}`);
+        log.info(`Backend stdout: ${output}`);
         
         // Check if server is running
         if (output.includes('Application startup complete') || 
@@ -134,12 +128,12 @@ SERVER_PORT=8000
       // Handle stderr
       pythonProcess.stderr.on('data', (data) => {
         const output = data.toString().trim();
-        log.error(`Python stderr: ${output}`);
+        log.error(`Backend stderr: ${output}`);
       });
       
       // Handle process exit
       pythonProcess.on('exit', (code) => {
-        log.info(`Python process exited with code ${code}`);
+        log.info(`Backend process exited with code ${code}`);
         pythonProcess = null;
         
         if (code !== 0) {
@@ -159,7 +153,7 @@ SERVER_PORT=8000
       }, 10000);
       
     } catch (error) {
-      log.error('Failed to start Python backend:', error);
+      log.error('Failed to start backend:', error);
       reject(error);
     }
   });
